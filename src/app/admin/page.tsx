@@ -150,10 +150,6 @@ export default function AdminPage() {
             <p className="text-white/60 text-xs font-mono break-all border border-white/10 p-3 bg-black/20">
               {address}
             </p>
-            <p className="text-white/40 text-xs font-mono mt-4">Contract owner</p>
-            <p className="text-white/60 text-xs font-mono break-all border border-white/10 p-3 bg-black/20">
-              {contractOwner as string}
-            </p>
           </div>
           
           <ConnectButton />
