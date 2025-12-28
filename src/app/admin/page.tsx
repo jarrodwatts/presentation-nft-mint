@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { Loader2, Terminal, Activity, Layers, ArrowRight } from "lucide-react";
 
 export default function AdminPage() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const queryClient = useQueryClient();
   const [newPresentation, setNewPresentation] = useState({
     name: "",
@@ -25,11 +25,20 @@ export default function AdminPage() {
     maxSupply: 0,
   });
 
+  const { data: contractOwner, isLoading: isLoadingOwner } = useReadContract({
+    address: PRESENTATION_NFT_ADDRESS,
+    abi: PRESENTATION_NFT_ABI,
+    functionName: "owner",
+  });
+
   const { data: presentationCount } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
     functionName: "presentationCount",
   });
+
+  const isOwner = address && contractOwner && 
+    address.toLowerCase() === (contractOwner as string).toLowerCase();
 
   const { writeContract, isPending, data: txHash } = useWriteContract();
   
@@ -84,9 +93,7 @@ export default function AdminPage() {
   if (!isConnected) {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 relative overflow-hidden font-body selection:bg-primary selection:text-black">
-        <div className="absolute inset-0 pointer-events-none z-10 bg-[linear-gradient(rgba(18,18,18,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,6px_100%] bg-repeat mix-blend-overlay opacity-20"></div>
-
-        <div className="w-full max-w-md border border-white/10 bg-black/40 backdrop-blur-md p-12 flex flex-col items-center gap-8 relative z-20">
+        <div className="w-full max-w-md border border-white/10 bg-black/40 p-12 flex flex-col items-center gap-8">
           <div className="flex flex-col items-center gap-4">
             <div className="w-16 h-16 border border-primary/20 bg-primary/5 flex items-center justify-center">
               <Terminal className="w-8 h-8 text-primary" />
@@ -100,6 +107,54 @@ export default function AdminPage() {
           </div>
           
           <div className="w-full h-px bg-white/10" />
+          
+          <ConnectButton />
+        </div>
+      </main>
+    );
+  }
+
+  if (isLoadingOwner) {
+    return (
+      <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 font-body">
+        <div className="flex flex-col items-center gap-6">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-muted-foreground text-sm font-mono uppercase tracking-widest">
+            Verifying Access
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isOwner) {
+    return (
+      <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 font-body selection:bg-primary selection:text-black">
+        <div className="w-full max-w-md border border-red-500/20 bg-red-500/5 p-12 flex flex-col items-center gap-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 border border-red-500/30 bg-red-500/10 flex items-center justify-center">
+              <Terminal className="w-8 h-8 text-red-500" />
+            </div>
+            <div className="text-center space-y-2">
+              <h1 className="font-display font-bold text-3xl tracking-tighter uppercase text-red-500">Access Denied</h1>
+              <p className="text-muted-foreground text-sm font-mono uppercase tracking-widest">
+                Owner Only
+              </p>
+            </div>
+          </div>
+          
+          <div className="w-full h-px bg-white/10" />
+          
+          <div className="text-center space-y-4 w-full">
+            <p className="text-white/40 text-xs font-mono">Connected as</p>
+            <p className="text-white/60 text-xs font-mono break-all border border-white/10 p-3 bg-black/20">
+              {address}
+            </p>
+            <p className="text-white/40 text-xs font-mono mt-4">Contract owner</p>
+            <p className="text-white/60 text-xs font-mono break-all border border-white/10 p-3 bg-black/20">
+              {contractOwner as string}
+            </p>
+          </div>
           
           <ConnectButton />
         </div>

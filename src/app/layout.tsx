@@ -16,7 +16,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Abstract NFT Onboarding",
+  title: "Abstract NFT Demo",
   description: "Mint your Abstract presentation NFT",
 };
 
