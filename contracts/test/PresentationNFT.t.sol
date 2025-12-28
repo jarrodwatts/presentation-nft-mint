@@ -321,4 +321,81 @@ contract PresentationNFTTest is Test {
         }
         return true;
     }
+
+    function testFuzz_Mint_DifferentUsers(address user) public {
+        vm.assume(user != address(0));
+        vm.assume(user != owner);
+        
+        _createActivePresentation();
+        
+        vm.prank(user);
+        nft.mint(0);
+        
+        assertEq(nft.balanceOf(user, 0), 1);
+        assertTrue(nft.hasMinted(user, 0));
+    }
+
+    function testFuzz_CreatePresentation_TimeWindow(uint256 startOffset, uint256 duration) public {
+        startOffset = bound(startOffset, 0, 365 days);
+        duration = bound(duration, 1, 365 days);
+        
+        uint256 startTime = block.timestamp + startOffset;
+        uint256 endTime = startTime + duration;
+        
+        vm.prank(owner);
+        uint256 tokenId = nft.createPresentation(
+            "Fuzz Test",
+            "Fuzz description",
+            "ipfs://fuzz",
+            startTime,
+            endTime,
+            0
+        );
+        
+        PresentationNFT.Presentation memory pres = nft.getPresentation(tokenId);
+        assertEq(pres.startTime, startTime);
+        assertEq(pres.endTime, endTime);
+    }
+
+    function testFuzz_MaxSupply(uint256 maxSupply) public {
+        maxSupply = bound(maxSupply, 1, 1000);
+        
+        vm.prank(owner);
+        nft.createPresentation(
+            "Limited",
+            "Limited edition",
+            "ipfs://limited",
+            block.timestamp,
+            block.timestamp + ONE_HOUR,
+            maxSupply
+        );
+        
+        PresentationNFT.Presentation memory pres = nft.getPresentation(0);
+        assertEq(pres.maxSupply, maxSupply);
+    }
+
+    function test_Uri_NonExistentToken() public view {
+        string memory uri = nft.uri(999);
+        assertEq(uri, "");
+    }
+
+    function test_CanMint_AllConditions() public {
+        _createActivePresentation();
+        
+        assertTrue(nft.canMint(0, alice));
+        
+        vm.prank(owner);
+        nft.setMintingActive(0, false);
+        assertFalse(nft.canMint(0, alice));
+        
+        vm.prank(owner);
+        nft.setMintingActive(0, true);
+        assertTrue(nft.canMint(0, alice));
+        
+        vm.prank(alice);
+        nft.mint(0);
+        assertFalse(nft.canMint(0, alice));
+        assertTrue(nft.canMint(0, bob));
+    }
+
 }

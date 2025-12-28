@@ -2,24 +2,15 @@
 
 import { useEffect } from "react";
 import { useAccount, useReadContract, useWaitForTransactionReceipt } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { useWriteContractSponsored, useLoginWithAbstract } from "@abstract-foundation/agw-react";
 import { getGeneralPaymasterInput } from "viem/zksync";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { PRESENTATION_NFT_ABI, PRESENTATION_NFT_ADDRESS, PAYMASTER_ADDRESS } from "@/lib/contracts";
+import { type Presentation, isPresentation, formatError } from "@/lib/types";
 import { toast } from "sonner";
-import { CheckCircle2, Clock, Loader2, ExternalLink, Wallet, Zap, ArrowRight, Sparkles } from "lucide-react";
+import { CheckCircle2, Clock, Loader2, ExternalLink, Zap, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-interface Presentation {
-  name: string;
-  description: string;
-  imageUri: string;
-  startTime: bigint;
-  endTime: bigint;
-  isActive: boolean;
-  maxSupply: bigint;
-}
 
 interface MintCardProps {
   tokenId: number;
@@ -28,6 +19,7 @@ interface MintCardProps {
 export function MintCard({ tokenId }: MintCardProps) {
   const { address, isConnected } = useAccount();
   const { login } = useLoginWithAbstract();
+  const queryClient = useQueryClient();
 
   const { data: presentation } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
@@ -36,7 +28,7 @@ export function MintCard({ tokenId }: MintCardProps) {
     args: [BigInt(tokenId)],
   });
 
-  const { data: hasMinted, refetch: refetchHasMinted } = useReadContract({
+  const { data: hasMinted } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
     functionName: "hasMinted",
@@ -44,7 +36,7 @@ export function MintCard({ tokenId }: MintCardProps) {
     query: { enabled: !!address },
   });
 
-  const { data: canMint, refetch: refetchCanMint } = useReadContract({
+  const { data: canMint } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
     functionName: "canMint",
@@ -52,7 +44,7 @@ export function MintCard({ tokenId }: MintCardProps) {
     query: { enabled: !!address },
   });
 
-  const { data: totalSupply, refetch: refetchTotalSupply } = useReadContract({
+  const { data: totalSupply } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
     functionName: "totalSupply",
@@ -65,12 +57,10 @@ export function MintCard({ tokenId }: MintCardProps) {
 
   useEffect(() => {
     if (txConfirmed) {
-      refetchTotalSupply();
-      refetchHasMinted();
-      refetchCanMint();
-      toast.success("NFT minted!");
+      queryClient.invalidateQueries({ queryKey: ["readContract"] });
+      toast.success("NFT collected!");
     }
-  }, [txConfirmed, refetchTotalSupply, refetchHasMinted, refetchCanMint]);
+  }, [txConfirmed, queryClient]);
 
   const handleMint = () => {
     if (!isConnected || !canMint) return;
@@ -103,7 +93,17 @@ export function MintCard({ tokenId }: MintCardProps) {
     );
   }
 
-  const pres = presentation as Presentation;
+  if (!isPresentation(presentation)) {
+    return (
+      <div className="w-full p-8 border border-red-500/30 bg-red-500/5 text-center">
+        <p className="text-red-400 font-mono text-sm uppercase tracking-wider">
+          Invalid presentation data
+        </p>
+      </div>
+    );
+  }
+
+  const pres = presentation;
   const now = BigInt(Math.floor(Date.now() / 1000));
   const isLive = pres.isActive && now >= pres.startTime && now <= pres.endTime;
   const hasEnded = now > pres.endTime;
@@ -203,6 +203,7 @@ export function MintCard({ tokenId }: MintCardProps) {
                   }
                 }}
                 disabled={isPending || (isConnected && !canMint)}
+                aria-label={!isConnected ? "Connect wallet to mint" : isPending ? "Minting in progress" : "Mint NFT"}
                 className={cn(
                   "relative w-full h-20 rounded-none border transition-all duration-300",
                   "text-lg font-bold uppercase tracking-widest font-display",
@@ -253,7 +254,7 @@ export function MintCard({ tokenId }: MintCardProps) {
             {error && (
               <div className="mt-4 p-4 border border-red-500/50 bg-red-500/5">
                 <p className="text-xs text-red-500 font-mono uppercase tracking-wide">
-                  Error: {error.message}
+                  {formatError(error)}
                 </p>
               </div>
             )}

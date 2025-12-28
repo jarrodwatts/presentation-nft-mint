@@ -3,9 +3,10 @@
 import { useReadContract } from "wagmi";
 import { PRESENTATION_NFT_ABI, PRESENTATION_NFT_ADDRESS } from "@/lib/contracts";
 import { MintCard } from "./mint-card";
+import { ErrorBoundary } from "./error-boundary";
 
 export function PresentationList() {
-  const { data: activePresentations, isLoading } = useReadContract({
+  const { data: activePresentations, isLoading, isError, refetch } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
     functionName: "getActivePresentations",
@@ -29,6 +30,24 @@ export function PresentationList() {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4 animate-in fade-in duration-500">
+        <h2 className="text-2xl md:text-3xl font-display font-black tracking-tighter text-red-400/80 uppercase">Connection Error</h2>
+        <div className="w-12 h-[1px] bg-red-500/20" />
+        <p className="text-white/40 font-mono text-xs uppercase tracking-[0.2em]">
+          Unable to fetch presentations
+        </p>
+        <button
+          onClick={() => refetch()}
+          className="mt-4 px-6 py-2 border border-white/20 text-white/60 hover:text-white hover:border-white/40 transition-colors font-mono text-xs uppercase tracking-wider"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (!activePresentations || (activePresentations as bigint[]).length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4 animate-in fade-in zoom-in-95 duration-500">
@@ -46,7 +65,9 @@ export function PresentationList() {
 
   return (
     <div className="w-full max-w-xl lg:max-w-6xl mx-auto px-4">
-      <MintCard tokenId={Number(latestTokenId)} />
+      <ErrorBoundary>
+        <MintCard tokenId={Number(latestTokenId)} />
+      </ErrorBoundary>
     </div>
   );
 }

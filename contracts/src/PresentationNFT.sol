@@ -211,18 +211,13 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
         return true;
     }
 
-    /**
-     * @notice Get all active presentations
-     */
     function getActivePresentations() external view returns (uint256[] memory) {
         uint256 count = 0;
         
-        // Count active presentations
         for (uint256 i = 0; i < presentationCount; i++) {
             if (presentations[i].isActive) count++;
         }
         
-        // Build array
         uint256[] memory active = new uint256[](count);
         uint256 index = 0;
         

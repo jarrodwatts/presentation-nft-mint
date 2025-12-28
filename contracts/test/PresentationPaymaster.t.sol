@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {Test, console} from "forge-std/Test.sol";
 import {PresentationPaymaster} from "../src/PresentationPaymaster.sol";
 import {PresentationNFT} from "../src/PresentationNFT.sol";
+import {Transaction, ExecutionResult} from "../src/interfaces/IPaymaster.sol";
 
 contract PresentationPaymasterTest is Test {
     PresentationPaymaster public paymaster;
@@ -157,6 +158,45 @@ contract PresentationPaymasterTest is Test {
     function test_PaymasterValidationMagic() public view {
         bytes4 expectedMagic = PresentationPaymaster.validateAndPayForPaymasterTransaction.selector;
         assertEq(paymaster.PAYMASTER_VALIDATION_SUCCESS_MAGIC(), expectedMagic);
+    }
+
+    function test_ValidatePaymaster_OnlyBootloader() public {
+        Transaction memory txn = _createMockTransaction(address(nft), 0);
+        
+        vm.prank(alice);
+        vm.expectRevert("Only bootloader");
+        paymaster.validateAndPayForPaymasterTransaction(bytes32(0), bytes32(0), txn);
+    }
+
+    function test_PostTransaction_OnlyBootloader() public {
+        Transaction memory txn = _createMockTransaction(address(nft), 0);
+        
+        vm.prank(alice);
+        vm.expectRevert("Only bootloader");
+        paymaster.postTransaction("", txn, bytes32(0), bytes32(0), ExecutionResult.Success, 0);
+    }
+
+    function _createMockTransaction(address to, uint256 tokenId) internal pure returns (Transaction memory) {
+        bytes memory data = abi.encodeWithSelector(bytes4(keccak256("mint(uint256)")), tokenId);
+        
+        return Transaction({
+            txType: 113,
+            from: uint256(uint160(address(0x1234))),
+            to: uint256(uint160(to)),
+            gasLimit: 100000,
+            gasPerPubdataByteLimit: 800,
+            maxFeePerGas: 0.5 gwei,
+            maxPriorityFeePerGas: 0,
+            paymaster: 0,
+            nonce: 0,
+            value: 0,
+            reserved: [uint256(0), uint256(0), uint256(0), uint256(0)],
+            data: data,
+            signature: "",
+            factoryDeps: new bytes32[](0),
+            paymasterInput: "",
+            reservedDynamic: ""
+        });
     }
 }
 

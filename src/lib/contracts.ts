@@ -1,5 +1,14 @@
-export const PRESENTATION_NFT_ADDRESS = process.env.NEXT_PUBLIC_NFT_CONTRACT as `0x${string}`;
-export const PAYMASTER_ADDRESS = process.env.NEXT_PUBLIC_PAYMASTER_CONTRACT as `0x${string}`;
+import { validateAddress } from "./types";
+
+export const PRESENTATION_NFT_ADDRESS = validateAddress(
+  process.env.NEXT_PUBLIC_NFT_CONTRACT,
+  "NEXT_PUBLIC_NFT_CONTRACT"
+);
+
+export const PAYMASTER_ADDRESS = validateAddress(
+  process.env.NEXT_PUBLIC_PAYMASTER_CONTRACT,
+  "NEXT_PUBLIC_PAYMASTER_CONTRACT"
+);
 
 export const PRESENTATION_NFT_ABI = [
   {

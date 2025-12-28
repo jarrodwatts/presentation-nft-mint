@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,39 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { ConnectButton } from "@/components/connect-button";
 import { PRESENTATION_NFT_ABI, PRESENTATION_NFT_ADDRESS } from "@/lib/contracts";
+import { type Presentation, formatError } from "@/lib/types";
 import { toast } from "sonner";
-import { Loader2, Terminal, Activity, Layers } from "lucide-react";
-
-const ERROR_PATTERNS: [RegExp, string][] = [
-  [/user rejected/i, "Transaction cancelled"],
-  [/insufficient funds/i, "Insufficient funds for gas"],
-  [/ownable|not the owner/i, "Only the contract owner can do this"],
-  [/reverted|revert/i, "Transaction failed"],
-];
-
-function formatError(error: Error): string {
-  const msg = error.message || "Unknown error";
-  
-  for (const [pattern, friendlyMessage] of ERROR_PATTERNS) {
-    if (pattern.test(msg)) return friendlyMessage;
-  }
-  
-  const firstSentence = msg.split(/[.\n]/)[0];
-  return firstSentence.length > 60 ? `${firstSentence.slice(0, 60)}...` : firstSentence;
-}
-
-interface Presentation {
-  name: string;
-  description: string;
-  imageUri: string;
-  startTime: bigint;
-  endTime: bigint;
-  isActive: boolean;
-  maxSupply: bigint;
-}
+import { Loader2, Terminal, Activity, Layers, ArrowRight } from "lucide-react";
 
 export default function AdminPage() {
   const { isConnected } = useAccount();
+  const queryClient = useQueryClient();
   const [newPresentation, setNewPresentation] = useState({
     name: "",
     description: "",
@@ -50,7 +25,7 @@ export default function AdminPage() {
     maxSupply: 0,
   });
 
-  const { data: presentationCount, refetch: refetchCount } = useReadContract({
+  const { data: presentationCount } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
     functionName: "presentationCount",
@@ -62,9 +37,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (txConfirmed) {
-      refetchCount();
+      queryClient.invalidateQueries({ queryKey: ["readContract"] });
     }
-  }, [txConfirmed, refetchCount]);
+  }, [txConfirmed, queryClient]);
 
   const handleCreatePresentation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -108,20 +83,24 @@ export default function AdminPage() {
 
   if (!isConnected) {
     return (
-      <main className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[100px] pointer-events-none" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-teal-500/10 blur-[100px] pointer-events-none" />
+      <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 relative overflow-hidden font-body selection:bg-primary selection:text-black">
+        <div className="absolute inset-0 pointer-events-none z-10 bg-[linear-gradient(rgba(18,18,18,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,6px_100%] bg-repeat mix-blend-overlay opacity-20"></div>
 
-        <div className="w-full max-w-sm border border-zinc-800 bg-zinc-900/50 backdrop-blur-xl p-8 rounded-2xl flex flex-col items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-900/20">
-              <Terminal className="w-5 h-5 text-zinc-950" />
+        <div className="w-full max-w-md border border-white/10 bg-black/40 backdrop-blur-md p-12 flex flex-col items-center gap-8 relative z-20">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 border border-primary/20 bg-primary/5 flex items-center justify-center">
+              <Terminal className="w-8 h-8 text-primary" />
             </div>
-            <span className="font-bold text-xl tracking-tight">Admin Portal</span>
+            <div className="text-center space-y-2">
+              <h1 className="font-display font-bold text-3xl tracking-tighter uppercase">Admin Portal</h1>
+              <p className="text-muted-foreground text-sm font-mono uppercase tracking-widest">
+                Restricted Access
+              </p>
+            </div>
           </div>
-          <p className="text-zinc-400 text-center text-sm">
-            Authenticate to access presentation controls
-          </p>
+          
+          <div className="w-full h-px bg-white/10" />
+          
           <ConnectButton />
         </div>
       </main>
@@ -129,159 +108,157 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100 selection:bg-emerald-500/30 relative overflow-hidden">
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[800px] h-[800px] rounded-full bg-emerald-500/5 blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-teal-500/5 blur-[100px]" />
-        <div className="absolute top-[40%] left-[60%] w-[300px] h-[300px] rounded-full bg-emerald-500/5 blur-[80px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] [mask-image:radial-gradient(ellipse_at_center,black_50%,transparent_100%)]" />
-      </div>
-
-      <div className="relative z-10">
-        <header className="border-b border-zinc-800/50 bg-zinc-950/50 backdrop-blur-md sticky top-0 z-50">
-          <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <Terminal className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="flex flex-col leading-none">
-                <span className="font-bold tracking-tight text-zinc-100">ABSTRACT</span>
-                <span className="text-[10px] uppercase tracking-wider text-emerald-500 font-semibold mt-0.5">Admin Console</span>
-              </div>
+    <main className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-black font-body">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-background/80 backdrop-blur-md">
+        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 border border-primary/20 bg-primary/5 flex items-center justify-center">
+              <Terminal className="w-5 h-5 text-primary" />
             </div>
-            <ConnectButton />
+            <div className="flex flex-col">
+              <span className="font-display font-bold text-xl tracking-tighter uppercase leading-none">Abstract<span className="text-primary">.</span></span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium mt-1">Admin Console</span>
+            </div>
           </div>
-        </header>
+          <ConnectButton />
+        </div>
+      </header>
 
-        <div className="container mx-auto px-6 py-8 grid gap-8 lg:grid-cols-12">
+      <div className="container mx-auto px-6 py-12 grid gap-12 lg:grid-cols-12">
+        
+        <div className="lg:col-span-5 space-y-8">
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10"></div>
+            <div className="flex items-center gap-2 text-primary">
+              <Layers className="w-4 h-4" />
+              <h2 className="font-display text-lg tracking-tight uppercase">New Deployment</h2>
+            </div>
+            <div className="h-px flex-1 bg-white/10"></div>
+          </div>
           
-          <div className="lg:col-span-5 space-y-6">
-            <div className="flex items-center gap-2 text-zinc-100 mb-2">
-              <Layers className="w-4 h-4 text-emerald-400" />
-              <h2 className="font-semibold tracking-tight">Create Presentation</h2>
+          <div className="border border-white/10 bg-white/[0.02] p-8">
+            <form onSubmit={handleCreatePresentation} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-bold pl-1">Event Name</Label>
+                <Input
+                  id="name"
+                  placeholder="E.G. ABSTRACT SUMMIT 2024"
+                  value={newPresentation.name}
+                  onChange={(e) => setNewPresentation((p) => ({ ...p, name: e.target.value }))}
+                  className="rounded-none bg-black/20 border-white/10 focus:border-primary focus:ring-0 h-12 transition-colors placeholder:text-white/20 uppercase"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="description" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-bold pl-1">Description</Label>
+                <Input
+                  id="description"
+                  placeholder="BRIEF SUMMARY"
+                  value={newPresentation.description}
+                  onChange={(e) => setNewPresentation((p) => ({ ...p, description: e.target.value }))}
+                  className="rounded-none bg-black/20 border-white/10 focus:border-primary focus:ring-0 h-12 transition-colors placeholder:text-white/20"
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="imageUri" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-bold pl-1">Asset URL</Label>
+                <Input
+                  id="imageUri"
+                  placeholder="IPFS://... OR HTTPS://..."
+                  value={newPresentation.imageUri}
+                  onChange={(e) => setNewPresentation((p) => ({ ...p, imageUri: e.target.value }))}
+                  className="rounded-none bg-black/20 border-white/10 focus:border-primary focus:ring-0 h-12 font-mono text-xs transition-colors placeholder:text-white/20"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="duration" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-bold pl-1">Duration (Min)</Label>
+                  <Input
+                    id="duration"
+                    type="number"
+                    min={5}
+                    value={newPresentation.durationMinutes || ""}
+                    onChange={(e) =>
+                      setNewPresentation((p) => ({
+                        ...p,
+                        durationMinutes: e.target.valueAsNumber || 60,
+                      }))
+                    }
+                    className="rounded-none bg-black/20 border-white/10 focus:border-primary focus:ring-0 h-12 font-mono transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="maxSupply" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-bold pl-1">Supply Cap</Label>
+                  <Input
+                    id="maxSupply"
+                    type="number"
+                    min={0}
+                    placeholder="0 = ∞"
+                    value={newPresentation.maxSupply || ""}
+                    onChange={(e) =>
+                      setNewPresentation((p) => ({
+                        ...p,
+                        maxSupply: e.target.valueAsNumber || 0,
+                      }))
+                    }
+                    className="rounded-none bg-black/20 border-white/10 focus:border-primary focus:ring-0 h-12 font-mono transition-colors"
+                  />
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={isPending}
+                className="w-full rounded-none bg-primary text-black hover:bg-primary/90 font-bold h-12 mt-4 uppercase tracking-widest transition-all text-xs"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deploying...
+                  </>
+                ) : (
+                  <>
+                    Initialize Contract
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        <div className="lg:col-span-7 space-y-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <Activity className="w-4 h-4 text-primary" />
+               <h2 className="font-display text-lg tracking-tight uppercase">Live Contracts</h2>
             </div>
-            
-            <div className="border border-zinc-800 bg-zinc-900/30 backdrop-blur-sm rounded-xl p-6 shadow-sm">
-              <form onSubmit={handleCreatePresentation} className="space-y-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold ml-1">Event Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="E.g. Abstract Summit 2024"
-                    value={newPresentation.name}
-                    onChange={(e) => setNewPresentation((p) => ({ ...p, name: e.target.value }))}
-                    className="bg-zinc-950/50 border-zinc-800 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-10 transition-colors"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="description" className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold ml-1">Brief Description</Label>
-                  <Input
-                    id="description"
-                    placeholder="Short summary for attendees"
-                    value={newPresentation.description}
-                    onChange={(e) => setNewPresentation((p) => ({ ...p, description: e.target.value }))}
-                    className="bg-zinc-950/50 border-zinc-800 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-10 transition-colors"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="imageUri" className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold ml-1">Asset URL</Label>
-                  <Input
-                    id="imageUri"
-                    placeholder="ipfs://... or https://..."
-                    value={newPresentation.imageUri}
-                    onChange={(e) => setNewPresentation((p) => ({ ...p, imageUri: e.target.value }))}
-                    className="bg-zinc-950/50 border-zinc-800 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-10 font-mono text-xs transition-colors"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="duration" className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold ml-1">Duration (Min)</Label>
-                    <Input
-                      id="duration"
-                      type="number"
-                      min={5}
-                      value={newPresentation.durationMinutes || ""}
-                      onChange={(e) =>
-                        setNewPresentation((p) => ({
-                          ...p,
-                          durationMinutes: e.target.valueAsNumber || 60,
-                        }))
-                      }
-                      className="bg-zinc-950/50 border-zinc-800 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-10 font-mono transition-colors"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="maxSupply" className="text-[10px] uppercase tracking-widest text-zinc-500 font-semibold ml-1">Supply Cap</Label>
-                    <Input
-                      id="maxSupply"
-                      type="number"
-                      min={0}
-                      placeholder="0 = ∞"
-                      value={newPresentation.maxSupply || ""}
-                      onChange={(e) =>
-                        setNewPresentation((p) => ({
-                          ...p,
-                          maxSupply: e.target.valueAsNumber || 0,
-                        }))
-                      }
-                      className="bg-zinc-950/50 border-zinc-800 focus:border-emerald-500/50 focus:ring-emerald-500/20 h-10 font-mono transition-colors"
-                    />
-                  </div>
-                </div>
-
-                <Button 
-                  type="submit" 
-                  disabled={isPending}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold h-10 mt-2 transition-all"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Deploying...
-                    </>
-                  ) : (
-                    "Deploy Presentation Contract"
-                  )}
-                </Button>
-              </form>
+            <div className="border border-white/10 px-3 py-1 bg-white/5 font-mono text-xs text-muted-foreground">
+              {presentationCount?.toString() ?? "0"} TOTAL
             </div>
           </div>
 
-          <div className="lg:col-span-7 space-y-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-zinc-100">
-                <Activity className="w-4 h-4 text-emerald-400" />
-                <h2 className="font-semibold tracking-tight">Active Deployments</h2>
+          <div className="border border-white/10 bg-white/[0.02]">
+            {presentationCount && Number(presentationCount) > 0 ? (
+              <div className="divide-y divide-white/5">
+                {Array.from({ length: Number(presentationCount) }).map((_, i) => (
+                  <PresentationRow
+                    key={i}
+                    tokenId={i}
+                  />
+                ))}
               </div>
-              <Badge variant="outline" className="border-zinc-800 text-zinc-500 font-mono text-xs">
-                {presentationCount?.toString() ?? "0"} Total
-              </Badge>
-            </div>
-
-            <div className="border border-zinc-800 bg-zinc-900/30 backdrop-blur-sm rounded-xl overflow-hidden">
-              {presentationCount && Number(presentationCount) > 0 ? (
-                <div className="divide-y divide-zinc-800/50">
-                  {Array.from({ length: Number(presentationCount) }).map((_, i) => (
-                    <PresentationRow
-                      key={i}
-                      tokenId={i}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="p-12 flex flex-col items-center justify-center text-zinc-500 gap-2">
-                  <Layers className="w-8 h-8 opacity-20" />
-                  <p className="text-sm">No presentations deployed yet</p>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div className="p-20 flex flex-col items-center justify-center text-muted-foreground gap-4">
+                <Layers className="w-12 h-12 opacity-10" />
+                <p className="text-sm font-mono uppercase tracking-widest opacity-50">System Empty</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -294,7 +271,9 @@ function PresentationRow({
 }: {
   tokenId: number;
 }) {
-  const { data: presentation, refetch: refetchPresentation } = useReadContract({
+  const queryClient = useQueryClient();
+  
+  const { data: presentation } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
     functionName: "getPresentation",
@@ -314,9 +293,9 @@ function PresentationRow({
 
   useEffect(() => {
     if (toggleTxConfirmed) {
-      refetchPresentation();
+      queryClient.invalidateQueries({ queryKey: ["readContract"] });
     }
-  }, [toggleTxConfirmed, refetchPresentation]);
+  }, [toggleTxConfirmed, queryClient]);
 
   const handleToggle = (checked: boolean) => {
     writeContract(
@@ -346,42 +325,42 @@ function PresentationRow({
   const isPaused = !pres.isActive;
 
   return (
-    <div className="flex items-center justify-between p-4 hover:bg-zinc-800/20 transition-colors group">
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-3">
-          <span className="font-medium text-zinc-200 text-sm">{pres.name}</span>
+    <div className="flex items-center justify-between p-6 hover:bg-white/[0.02] transition-colors group border-l-2 border-transparent hover:border-primary">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-4">
+          <span className="font-display font-bold text-lg tracking-tight uppercase text-foreground">{pres.name}</span>
           {isLive ? (
-            <Badge className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-0 text-[10px] px-1.5 py-0 h-4 uppercase tracking-wider font-bold">
+            <Badge className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 rounded-none text-[10px] px-2 py-0.5 uppercase tracking-widest font-bold">
               Live
             </Badge>
           ) : isFinished ? (
-            <Badge variant="outline" className="text-zinc-500 border-zinc-800 text-[10px] px-1.5 py-0 h-4 uppercase tracking-wider">
+            <Badge variant="outline" className="text-muted-foreground border-white/10 rounded-none text-[10px] px-2 py-0.5 uppercase tracking-widest">
               Ended
             </Badge>
           ) : isPaused ? (
-            <Badge variant="outline" className="text-amber-500/80 border-amber-500/30 text-[10px] px-1.5 py-0 h-4 uppercase tracking-wider">
+            <Badge variant="outline" className="text-amber-500/80 border-amber-500/30 rounded-none text-[10px] px-2 py-0.5 uppercase tracking-widest">
               Paused
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-zinc-500 border-zinc-800 text-[10px] px-1.5 py-0 h-4 uppercase tracking-wider">
+            <Badge variant="outline" className="text-muted-foreground border-white/10 rounded-none text-[10px] px-2 py-0.5 uppercase tracking-widest">
               Scheduled
             </Badge>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-zinc-500 font-mono">
-          <span>ID: {tokenId}</span>
-          <span className="w-1 h-1 rounded-full bg-zinc-800" />
+        <div className="flex items-center gap-4 text-xs text-muted-foreground font-mono">
+          <span className="text-white/30">ID_0{tokenId}</span>
+          <span className="w-px h-3 bg-white/10" />
           <span>
-            Minted: <span className="text-zinc-300">{totalSupply?.toString() ?? "0"}</span>
-            <span className="text-zinc-600"> / </span>
+            MINTED: <span className="text-foreground">{totalSupply?.toString() ?? "0"}</span>
+            <span className="text-white/20 mx-1">/</span>
             {pres.maxSupply > 0n ? pres.maxSupply.toString() : "∞"}
           </span>
         </div>
       </div>
       
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Label htmlFor={`toggle-${tokenId}`} className="text-[10px] uppercase font-bold text-zinc-600 cursor-pointer group-hover:text-zinc-400 transition-colors">
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3">
+          <Label htmlFor={`toggle-${tokenId}`} className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground cursor-pointer group-hover:text-foreground transition-colors">
             {pres.isActive ? "Active" : "Paused"}
           </Label>
           <Switch
@@ -389,7 +368,7 @@ function PresentationRow({
             checked={pres.isActive}
             onCheckedChange={handleToggle}
             disabled={isPending}
-            className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-zinc-800"
+            className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-zinc-800 border border-white/10 rounded-full"
           />
         </div>
       </div>
