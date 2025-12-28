@@ -1,0 +1,25 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+fallback_oz = true
+
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "forge-std/=lib/forge-std/src/"
+]
+
+solc_version = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+
+[profile.default.zksync]
+enable_eravm_extensions = true
+
+[rpc_endpoints]
+abstractTestnet = "https://api.testnet.abs.xyz"
+abstractMainnet = "https://api.mainnet.abs.xyz"
+
+[etherscan]
+abstractTestnet = { chain = "11124", url = "https://api-sepolia.abscan.org/api", key = "MPA9JU7VUS3PA8Q6AZK55G7EVM76EFH1MI" }
+abstractMainnet = { chain = "2741", url = "https://api.abscan.org/api", key = "MPA9JU7VUS3PA8Q6AZK55G7EVM76EFH1MI" }
