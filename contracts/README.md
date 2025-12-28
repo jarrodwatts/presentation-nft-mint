@@ -1,66 +1,75 @@
-## Foundry
+# Abstract NFT Onboarding Contracts
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+Smart contracts for the Abstract NFT Onboarding platform, enabling time-limited NFT drops with gasless minting via Account Abstraction.
 
-Foundry consists of:
+## Contracts Overview
 
-- **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
-- **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
-- **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
-- **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+### PresentationNFT.sol
+An ERC1155 contract that manages multiple NFT "presentations" or events. Each token ID represents a unique presentation with its own configuration.
+- **Time-Windowed**: Mints are only available during a specified start and end time.
+- **Fair Minting**: Restricted to one mint per wallet per presentation.
+- **Metadata**: Supports both external base URI and on-chain JSON metadata fallback.
+- **Supply Control**: Optional maximum supply limits per presentation.
 
-## Documentation
+### PresentationPaymaster.sol
+A zkSync-native Paymaster contract that sponsors gas fees for users.
+- **Targeted Sponsorship**: Only sponsors `mint(uint256)` transactions on the configured `PresentationNFT` contract.
+- **Validation**: Uses bootloader-level validation to ensure transactions meet sponsorship criteria.
+- **Configurable**: Admin can adjust maximum gas price and toggle sponsorship status.
 
-https://book.getfoundry.sh/
+## Key Functions (PresentationNFT)
 
-## Usage
+| Function | Access | Description |
+|----------|--------|-------------|
+| `mint(uint256 tokenId)` | Public | Mints one NFT for the specified presentation if valid. |
+| `createPresentation(...)` | Owner | Creates a new presentation with time and supply limits. |
+| `setMintingActive(...)` | Owner | Manually enables or disables minting for a presentation. |
+| `updateTimeWindow(...)` | Owner | Adjusts the start and end timestamps for a presentation. |
+| `setBaseUri(string)` | Owner | Updates the base URI for metadata. |
+| `canMint(uint256, address)` | View | Checks if a user is currently eligible to mint. |
 
-### Build
+## Deployment
 
-```shell
-$ forge build
+Deployment scripts are located in `script/Deploy.s.sol`. Ensure you have your environment variables configured.
+
+### Prerequisites
+Set the following environment variables:
+- `OWNER_ADDRESS`: The address that will own the deployed contracts.
+- `NFT_BASE_URI`: (Optional) Base URI for NFT metadata.
+
+### Commands
+
+**Deploy both NFT and Paymaster:**
+```bash
+forge script script/Deploy.s.sol:DeployScript --rpc-url abstractTestnet --broadcast --verify
 ```
 
-### Test
-
-```shell
-$ forge test
+**Deploy NFT only:**
+```bash
+forge script script/Deploy.s.sol:DeployNFTOnly --rpc-url abstractTestnet --broadcast --verify
 ```
 
-### Format
-
-```shell
-$ forge fmt
+**Deploy Paymaster only:**
+(Requires `NFT_CONTRACT` environment variable)
+```bash
+forge script script/Deploy.s.sol:DeployPaymasterOnly --rpc-url abstractTestnet --broadcast --verify
 ```
 
-### Gas Snapshots
+*Replace `abstractTestnet` with `abstractMainnet` for production deployment.*
 
-```shell
-$ forge snapshot
+## Testing
+
+Run the test suite using Forge:
+```bash
+forge test
 ```
 
-### Anvil
-
-```shell
-$ anvil
+For verbose output:
+```bash
+forge test -vvv
 ```
 
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+## Security Considerations
+- **Paymaster Funding**: The `PresentationPaymaster` must be funded with ETH to sponsor transactions. Monitor balances to prevent service interruption.
+- **Admin Keys**: The `Owner` address has significant control over presentations and paymaster settings. Use a multisig for production environments.
+- **Gas Price Spikes**: The paymaster has a `maxGasPrice` limit to protect against unexpected gas costs during network congestion.
