@@ -35,6 +35,7 @@ contract PresentationPaymaster is IPaymaster, Ownable {
     event MaxGasPriceUpdated(uint256 newMaxGasPrice);
     event GasSponsored(address indexed user, uint256 gasUsed);
     event FundsWithdrawn(address indexed to, uint256 amount);
+    event WithdrawerUpdated(address indexed withdrawer, bool canWithdraw);
 
     // ============ Errors ============
     
@@ -161,6 +162,7 @@ contract PresentationPaymaster is IPaymaster, Ownable {
      */
     function setWithdrawer(address withdrawer, bool canWithdraw) external onlyOwner {
         withdrawers[withdrawer] = canWithdraw;
+        emit WithdrawerUpdated(withdrawer, canWithdraw);
     }
 
     /**

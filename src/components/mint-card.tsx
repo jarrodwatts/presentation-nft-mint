@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAccount, useReadContract, useWaitForTransactionReceipt } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { useWriteContractSponsored, useLoginWithAbstract } from "@abstract-foundation/agw-react";
@@ -11,6 +11,7 @@ import { type Presentation, isPresentation, formatError } from "@/lib/types";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, Loader2, ExternalLink, Zap, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Confetti } from "@/components/confetti";
 
 interface MintCardProps {
   tokenId: number;
@@ -20,6 +21,7 @@ export function MintCard({ tokenId }: MintCardProps) {
   const { address, isConnected } = useAccount();
   const { login } = useLoginWithAbstract();
   const queryClient = useQueryClient();
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const { data: presentation } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
@@ -51,16 +53,32 @@ export function MintCard({ tokenId }: MintCardProps) {
     args: [BigInt(tokenId)],
   });
 
-  const { writeContractSponsored, isPending, isSuccess, error, data: txHash } = useWriteContractSponsored();
+  const { writeContractSponsored, isPending, isSuccess, error, data: txHash, reset } = useWriteContractSponsored();
   
-  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+  const { isSuccess: txConfirmed, isError: txFailed } = useWaitForTransactionReceipt({
+    hash: txHash,
+    timeout: 60_000,
+  });
 
   useEffect(() => {
     if (txConfirmed) {
       queryClient.invalidateQueries({ queryKey: ["readContract"] });
       toast.success("NFT collected!");
+      setShowConfetti(true);
     }
   }, [txConfirmed, queryClient]);
+
+  useEffect(() => {
+    if (!isConnected && (isPending || txHash)) {
+      reset();
+    }
+  }, [isConnected, isPending, txHash, reset]);
+
+  useEffect(() => {
+    if (txFailed && txHash) {
+      toast.error("Transaction timed out. Please try again.");
+    }
+  }, [txFailed, txHash]);
 
   const handleMint = () => {
     if (!isConnected || !canMint) return;
@@ -116,6 +134,8 @@ export function MintCard({ tokenId }: MintCardProps) {
   };
 
   return (
+    <>
+    <Confetti isActive={showConfetti} />
     <div className="group relative w-full animate-reveal max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row lg:items-center lg:gap-16 xl:gap-24 gap-12">
         
@@ -142,7 +162,7 @@ export function MintCard({ tokenId }: MintCardProps) {
         <div className="w-full lg:w-1/2 xl:w-[45%] flex flex-col space-y-8 lg:space-y-12">
           
           <div className="space-y-6">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-black text-white uppercase leading-[0.95] tracking-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-black text-white uppercase leading-[0.95] tracking-tight break-words">
               {pres.name}
             </h1>
             
@@ -176,23 +196,31 @@ export function MintCard({ tokenId }: MintCardProps) {
                  <span className="text-white/40 uppercase tracking-widest font-mono text-sm">Edition Closed</span>
                </div>
             ) : hasMinted ? (
-              <a
-                href={`https://portal.abs.xyz/profile/${address}?t=nfts`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full p-6 border border-primary bg-primary/5 text-primary flex items-center justify-between group/collected hover:bg-primary hover:text-black transition-all duration-300"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="p-1 border border-current">
-                    <CheckCircle2 className="w-4 h-4" />
+              <div className="w-full space-y-4">
+                <div className="w-full p-4 border border-primary bg-primary/5 flex items-center gap-4">
+                  {pres.imageUri && (
+                    <div className="w-16 h-16 shrink-0 border border-primary/30 overflow-hidden">
+                      <img src={pres.imageUri} alt={pres.name} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 text-primary mb-1">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span className="text-sm font-bold uppercase tracking-widest font-display">Collected</span>
+                    </div>
+                    <p className="text-xs text-white/50 font-mono truncate">{pres.name}</p>
                   </div>
-                  <span className="text-lg font-bold uppercase tracking-widest font-display">Collected</span>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider opacity-60 group-hover/collected:opacity-100">
-                  <span>View</span>
-                  <ExternalLink className="w-3 h-3" />
-                </div>
-              </a>
+                <a
+                  href={`https://portal.abs.xyz/profile/nft/${PRESENTATION_NFT_ADDRESS}/${tokenId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full h-14 flex items-center justify-center gap-3 border border-white/20 bg-white/5 text-white hover:bg-white hover:text-black transition-all duration-300 group/portal"
+                >
+                  <span className="text-sm font-bold uppercase tracking-widest font-display">View on Portal</span>
+                  <ExternalLink className="w-4 h-4 opacity-60 group-hover/portal:opacity-100" />
+                </a>
+              </div>
             ) : (
               <Button
                 onClick={() => {
@@ -203,7 +231,7 @@ export function MintCard({ tokenId }: MintCardProps) {
                   }
                 }}
                 disabled={isPending || (isConnected && !canMint)}
-                aria-label={!isConnected ? "Connect wallet to mint" : isPending ? "Minting in progress" : "Mint NFT"}
+                aria-label={!isConnected ? "Connect wallet" : isPending ? "Minting..." : "Mint NFT"}
                 className={cn(
                   "relative w-full h-20 rounded-none border transition-all duration-300",
                   "text-lg font-bold uppercase tracking-widest font-display",
@@ -229,7 +257,7 @@ export function MintCard({ tokenId }: MintCardProps) {
                     <span>Unavailable</span>
                   ) : (
                     <>
-                      <span>Mint Edition</span>
+                      <span>Mint NFT</span>
                       <Zap className="w-5 h-5 fill-current" />
                     </>
                   )}
@@ -262,5 +290,6 @@ export function MintCard({ tokenId }: MintCardProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }

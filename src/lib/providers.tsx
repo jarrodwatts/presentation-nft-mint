@@ -6,6 +6,7 @@ import { AbstractWalletProvider } from "@abstract-foundation/agw-react";
 import { config, CHAIN } from "./wagmi";
 import { useState, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { NetworkGuard } from "@/components/network-guard";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -22,11 +23,18 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <AbstractWalletProvider chain={CHAIN}>
-          {children}
-          <Toaster richColors position="top-center" />
-        </AbstractWalletProvider>
+        <NetworkGuard />
+        {children}
+        <Toaster richColors position="top-center" />
       </QueryClientProvider>
     </WagmiProvider>
+  );
+}
+
+export function AGWProvider({ children }: { children: ReactNode }) {
+  return (
+    <AbstractWalletProvider chain={CHAIN}>
+      {children}
+    </AbstractWalletProvider>
   );
 }

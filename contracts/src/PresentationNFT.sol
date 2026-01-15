@@ -55,6 +55,7 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
     event PresentationUpdated(uint256 indexed tokenId);
     event MintingToggled(uint256 indexed tokenId, bool isActive);
     event NFTMinted(address indexed to, uint256 indexed tokenId);
+    event BaseURIUpdated(string newUri);
 
     // ============ Errors ============
     
@@ -182,6 +183,7 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
      */
     function setBaseUri(string calldata newUri) external onlyOwner {
         baseTokenUri = newUri;
+        emit BaseURIUpdated(newUri);
     }
 
     // ============ View Functions ============

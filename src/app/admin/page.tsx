@@ -8,11 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ConnectButton } from "@/components/connect-button";
+import { AdminConnectButton } from "@/components/admin-connect-button";
 import { PRESENTATION_NFT_ABI, PRESENTATION_NFT_ADDRESS } from "@/lib/contracts";
 import { type Presentation, formatError } from "@/lib/types";
 import { toast } from "sonner";
-import { Loader2, Terminal, Activity, Layers, ArrowRight } from "lucide-react";
+import { Loader2, Terminal, Activity, Layers, ArrowRight, Upload, X, Eye } from "lucide-react";
 
 export default function AdminPage() {
   const { address, isConnected } = useAccount();
@@ -24,6 +24,49 @@ export default function AdminPage() {
     durationMinutes: 60,
     maxSupply: 0,
   });
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const response = await fetch(`/api/upload?filename=${encodeURIComponent(file.name)}`, {
+        method: "POST",
+        body: file,
+      });
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const blob = await response.json();
+      setNewPresentation((p) => ({ ...p, imageUri: blob.url }));
+      toast.success("Image uploaded");
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileUpload(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
 
   const { data: contractOwner, isLoading: isLoadingOwner } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
@@ -40,15 +83,26 @@ export default function AdminPage() {
   const isOwner = address && contractOwner && 
     address.toLowerCase() === (contractOwner as string).toLowerCase();
 
-  const { writeContract, isPending, data: txHash } = useWriteContract();
-  
-  const { isSuccess: txConfirmed } = useWaitForTransactionReceipt({ hash: txHash });
+  const { writeContract, isPending, data: txHash, reset } = useWriteContract();
+
+  const { isSuccess: txConfirmed, isLoading: txWaiting } = useWaitForTransactionReceipt({ hash: txHash });
 
   useEffect(() => {
     if (txConfirmed) {
       queryClient.invalidateQueries({ queryKey: ["readContract"] });
+      toast.success("Edition created!");
+      setNewPresentation({
+        name: "",
+        description: "",
+        imageUri: "",
+        durationMinutes: 60,
+        maxSupply: 0,
+      });
+      reset();
     }
-  }, [txConfirmed, queryClient]);
+  }, [txConfirmed, queryClient, reset]);
+
+  const isCreating = isPending || txWaiting;
 
   const handleCreatePresentation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,17 +125,7 @@ export default function AdminPage() {
         ],
       },
       {
-        onSuccess: () => {
-          toast.success("Transaction submitted");
-          setNewPresentation({
-            name: "",
-            description: "",
-            imageUri: "",
-            durationMinutes: 60,
-            maxSupply: 0,
-          });
-        },
-        onError: (error) => {
+        onError: (error: Error) => {
           toast.error(formatError(error));
         },
       }
@@ -108,7 +152,7 @@ export default function AdminPage() {
           
           <div className="w-full h-px bg-white/10" />
           
-          <ConnectButton />
+          <AdminConnectButton />
         </div>
       </main>
     );
@@ -152,7 +196,7 @@ export default function AdminPage() {
             </p>
           </div>
           
-          <ConnectButton />
+          <AdminConnectButton />
         </div>
       </main>
     );
@@ -171,7 +215,7 @@ export default function AdminPage() {
               <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium mt-1">Admin Console</span>
             </div>
           </div>
-          <ConnectButton />
+          <AdminConnectButton />
         </div>
       </header>
 
@@ -214,15 +258,54 @@ export default function AdminPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="imageUri" className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-bold pl-1">Asset URL</Label>
-                <Input
-                  id="imageUri"
-                  placeholder="IPFS://... OR HTTPS://..."
-                  value={newPresentation.imageUri}
-                  onChange={(e) => setNewPresentation((p) => ({ ...p, imageUri: e.target.value }))}
-                  className="rounded-none bg-black/20 border-white/10 focus:border-primary focus:ring-0 h-12 font-mono text-xs transition-colors placeholder:text-white/20"
-                  required
-                />
+                <Label className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground font-bold pl-1">Image</Label>
+                {newPresentation.imageUri ? (
+                  <div className="relative aspect-video bg-black/20 border border-white/10 overflow-hidden group">
+                    <img
+                      src={newPresentation.imageUri}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setNewPresentation((p) => ({ ...p, imageUri: "" }))}
+                      className="absolute top-2 right-2 p-1 bg-black/80 border border-white/20 text-white/60 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label="Remove image"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    className={`relative aspect-video border-2 border-dashed transition-colors flex flex-col items-center justify-center gap-3 cursor-pointer ${
+                      isDragging ? "border-primary bg-primary/5" : "border-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      aria-label="Upload image"
+                    />
+                    {isUploading ? (
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-white/30" />
+                        <span className="text-xs text-white/40 font-mono uppercase tracking-wider">
+                          Drop image or click to upload
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-6">
@@ -262,25 +345,69 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <Button 
-                type="submit" 
-                disabled={isPending}
+              <Button
+                type="submit"
+                disabled={isCreating}
                 className="w-full rounded-none bg-primary text-black hover:bg-primary/90 font-bold h-12 mt-4 uppercase tracking-widest transition-all text-xs"
               >
-                {isPending ? (
+                {isCreating ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Deploying...
+                    Creating...
                   </>
                 ) : (
                   <>
-                    Initialize Contract
+                    Create Edition
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </>
                 )}
               </Button>
             </form>
           </div>
+
+          {(newPresentation.name || newPresentation.imageUri) && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10"></div>
+                <div className="flex items-center gap-2 text-white/40">
+                  <Eye className="w-4 h-4" />
+                  <span className="font-display text-sm tracking-tight uppercase">Preview</span>
+                </div>
+                <div className="h-px flex-1 bg-white/10"></div>
+              </div>
+
+              <div className="border border-white/10 bg-white/[0.02] p-6">
+                <div className="flex gap-4">
+                  <div className="w-24 h-24 shrink-0 bg-zinc-900 border border-white/10 overflow-hidden">
+                    {newPresentation.imageUri ? (
+                      <img
+                        src={newPresentation.imageUri}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Layers className="w-8 h-8 text-white/10" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <h3 className="font-display font-bold text-lg tracking-tight uppercase text-white truncate">
+                      {newPresentation.name || "Untitled"}
+                    </h3>
+                    {newPresentation.description && (
+                      <p className="text-sm text-white/50 line-clamp-2">{newPresentation.description}</p>
+                    )}
+                    <div className="flex items-center gap-4 text-xs text-white/30 font-mono">
+                      <span>{newPresentation.durationMinutes} MIN</span>
+                      <span className="w-px h-3 bg-white/10" />
+                      <span>{newPresentation.maxSupply > 0 ? `${newPresentation.maxSupply} MAX` : "UNLIMITED"}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="lg:col-span-7 space-y-8">
@@ -360,7 +487,7 @@ function PresentationRow({
         onSuccess: () => {
           toast.success(`Minting ${checked ? "enabled" : "disabled"}`);
         },
-        onError: (error) => {
+        onError: (error: Error) => {
           toast.error(formatError(error));
         },
       }

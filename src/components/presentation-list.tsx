@@ -50,12 +50,36 @@ export function PresentationList() {
 
   if (!activePresentations || (activePresentations as bigint[]).length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-4 animate-in fade-in zoom-in-95 duration-500">
-        <h2 className="text-4xl md:text-6xl font-display font-black tracking-tighter text-white/20 uppercase">No Active Drops</h2>
-        <div className="w-12 h-[1px] bg-white/10" />
-        <p className="text-white/40 font-mono text-xs uppercase tracking-[0.2em]">
-          Check back soon
-        </p>
+      <div className="w-full max-w-xl lg:max-w-6xl mx-auto px-4 animate-reveal">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:gap-16 xl:gap-24 gap-12">
+          <div className="relative w-full lg:w-1/2 xl:w-[55%] aspect-square max-w-[600px] lg:max-w-none mx-auto lg:mx-0">
+            <div className="absolute inset-0 border border-white/10 translate-x-4 translate-y-4" />
+            <div className="relative h-full w-full bg-zinc-900 border border-white/10 overflow-hidden">
+              <img
+                src="/placeholder.png"
+                alt="Coming Soon"
+                className="h-full w-full object-cover grayscale opacity-30"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            </div>
+          </div>
+          <div className="w-full lg:w-1/2 xl:w-[45%] flex flex-col space-y-8 lg:space-y-12">
+            <div className="space-y-6">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-black text-white/20 uppercase leading-[0.95] tracking-tight">
+                Coming Soon
+              </h1>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-[1px] bg-white/10 mt-3 shrink-0" />
+                <p className="text-white/40 text-sm md:text-base font-body max-w-md leading-relaxed">
+                  The next edition is being prepared. Check back soon.
+                </p>
+              </div>
+            </div>
+            <div className="w-full p-6 border border-white/10 bg-white/5 text-center">
+              <span className="text-white/30 uppercase tracking-widest font-mono text-sm">No Active Editions</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

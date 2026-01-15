@@ -21,5 +21,5 @@ abstractTestnet = "https://api.testnet.abs.xyz"
 abstractMainnet = "https://api.mainnet.abs.xyz"
 
 [etherscan]
-abstractTestnet = { chain = "11124", url = "https://api-sepolia.abscan.org/api", key = "MPA9JU7VUS3PA8Q6AZK55G7EVM76EFH1MI" }
-abstractMainnet = { chain = "2741", url = "https://api.abscan.org/api", key = "MPA9JU7VUS3PA8Q6AZK55G7EVM76EFH1MI" }
+abstractTestnet = { chain = "11124", url = "https://api.etherscan.io/v2/api?chainid=11124", key = "${ETHERSCAN_API_KEY}" }
+abstractMainnet = { chain = "2741", url = "https://api.etherscan.io/v2/api?chainid=2741", key = "${ETHERSCAN_API_KEY}" }
