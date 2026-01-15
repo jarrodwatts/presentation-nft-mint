@@ -32,11 +32,12 @@ export function validateAddress(
     throw new Error(`Missing environment variable for ${name}`);
   }
 
-  if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-    throw new Error(`Invalid ${name} address: ${addr}`);
+  const trimmed = addr.trim();
+  if (!/^0x[a-fA-F0-9]{40}$/.test(trimmed)) {
+    throw new Error(`Invalid ${name} address: ${trimmed}`);
   }
 
-  return addr as `0x${string}`;
+  return trimmed as `0x${string}`;
 }
 
 export const ERROR_PATTERNS: [RegExp, string][] = [
