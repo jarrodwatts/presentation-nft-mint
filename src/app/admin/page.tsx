@@ -9,12 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { AdminConnectButton } from "@/components/admin-connect-button";
+import { AGWProvider } from "@/lib/providers";
 import { PRESENTATION_NFT_ABI, PRESENTATION_NFT_ADDRESS } from "@/lib/contracts";
 import { type Presentation, formatError } from "@/lib/types";
 import { toast } from "sonner";
 import { Loader2, Terminal, Activity, Layers, ArrowRight, Upload, X, Eye } from "lucide-react";
 
 export default function AdminPage() {
+  return (
+    <AGWProvider>
+      <AdminPageContent />
+    </AGWProvider>
+  );
+}
+
+function AdminPageContent() {
   const { address, isConnected } = useAccount();
   const queryClient = useQueryClient();
   const [newPresentation, setNewPresentation] = useState({

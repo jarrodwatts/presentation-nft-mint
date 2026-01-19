@@ -1,14 +1,29 @@
 "use client";
 
+import { useLoginWithAbstract } from "@abstract-foundation/agw-react";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { LogOut, Wallet } from "lucide-react";
 import { CHAIN } from "@/lib/wagmi";
 
 export function AdminConnectButton() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, isConnecting } = useAccount();
+  const { login, logout } = useLoginWithAbstract();
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
+
+  const injectedConnector = connectors.find((c) => c.type === "injected");
+
+  if (isConnecting || isPending) {
+    return (
+      <Button
+        disabled
+        className="h-10 rounded-none bg-white/50 text-black border-0 font-bold uppercase tracking-widest text-xs"
+      >
+        Connecting...
+      </Button>
+    );
+  }
 
   if (isConnected && address) {
     return (
@@ -20,7 +35,10 @@ export function AdminConnectButton() {
           </span>
         </div>
         <button
-          onClick={() => disconnect()}
+          onClick={() => {
+            logout();
+            disconnect();
+          }}
           className="p-2 border border-white/10 hover:border-red-500/30 hover:bg-red-500/10 transition-colors"
           aria-label="Disconnect wallet"
         >
@@ -30,22 +48,24 @@ export function AdminConnectButton() {
     );
   }
 
-  const injectedConnector = connectors.find((c) => c.type === "injected");
-
   return (
-    <Button
-      onClick={() => injectedConnector && connect({ connector: injectedConnector, chainId: CHAIN.id })}
-      disabled={isPending || !injectedConnector}
-      className="h-10 rounded-none bg-white text-black hover:bg-primary hover:text-black border-0 font-bold uppercase tracking-widest text-xs transition-all duration-300"
-    >
-      {isPending ? (
-        "Connecting..."
-      ) : (
-        <>
-          <Wallet className="w-4 h-4 mr-2" />
-          Connect MetaMask
-        </>
+    <div className="flex items-center gap-2">
+      <Button
+        onClick={login}
+        className="h-10 rounded-none bg-white text-black hover:bg-primary hover:text-black border-0 font-bold uppercase tracking-widest text-xs transition-all duration-300"
+      >
+        <Wallet className="w-4 h-4 mr-2" />
+        AGW
+      </Button>
+      {injectedConnector && (
+        <Button
+          onClick={() => connect({ connector: injectedConnector, chainId: CHAIN.id })}
+          variant="outline"
+          className="h-10 rounded-none border-white/20 bg-transparent text-white hover:bg-white/10 hover:border-white/40 font-bold uppercase tracking-widest text-xs transition-all duration-300"
+        >
+          MetaMask
+        </Button>
       )}
-    </Button>
+    </div>
   );
 }
