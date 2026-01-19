@@ -147,9 +147,46 @@ export const PRESENTATION_NFT_ABI = [
   },
   {
     type: "function",
-    name: "owner",
+    name: "ADMIN_ROLE",
     inputs: [],
-    outputs: [{ name: "", type: "address", internalType: "address" }],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
     stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "DEFAULT_ADMIN_ROLE",
+    inputs: [],
+    outputs: [{ name: "", type: "bytes32", internalType: "bytes32" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "hasRole",
+    inputs: [
+      { name: "role", type: "bytes32", internalType: "bytes32" },
+      { name: "account", type: "address", internalType: "address" },
+    ],
+    outputs: [{ name: "", type: "bool", internalType: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "grantRole",
+    inputs: [
+      { name: "role", type: "bytes32", internalType: "bytes32" },
+      { name: "account", type: "address", internalType: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "revokeRole",
+    inputs: [
+      { name: "role", type: "bytes32", internalType: "bytes32" },
+      { name: "account", type: "address", internalType: "address" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
 ] as const;

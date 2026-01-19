@@ -25,9 +25,9 @@ cd contracts
 forge build --zksync
 forge test --zksync
 
-# Deploy
-forge script script/Deploy.s.sol --zksync --rpc-url https://api.testnet.abs.xyz --broadcast
-forge script script/Deploy.s.sol --zksync --rpc-url https://api.mainnet.abs.xyz --broadcast
+# Deploy (ADMIN_ADDRESS receives admin roles)
+ADMIN_ADDRESS=<admin> forge script script/Deploy.s.sol --tc DeployScript --zksync --rpc-url https://api.testnet.abs.xyz --broadcast --account <keystore>
+ADMIN_ADDRESS=<admin> forge script script/Deploy.s.sol --tc DeployScript --zksync --rpc-url https://api.mainnet.abs.xyz --broadcast --account <keystore>
 
 # Verify (uses Etherscan V2 API)
 ETHERSCAN_API_KEY=<key> forge verify-contract <ADDRESS> <CONTRACT> --zksync --verifier-url "https://api.etherscan.io/v2/api?chainid=2741" --chain 2741
@@ -52,16 +52,20 @@ ETHERSCAN_API_KEY=<key> forge verify-contract <ADDRESS> <CONTRACT> --zksync --ve
 - `src/components/mint-card.tsx` - Minting logic with sponsored transactions via `useWriteContractSponsored`
 
 ### Smart Contracts
-- `contracts/src/PresentationNFT.sol` - ERC1155 with per-presentation time windows and one-mint-per-wallet
-- `contracts/src/PresentationPaymaster.sol` - Gas sponsorship for mints
+- `contracts/src/PresentationNFT.sol` - ERC1155 with per-presentation time windows, one-mint-per-wallet, AccessControl (multi-admin)
+- `contracts/src/PresentationPaymaster.sol` - Gas sponsorship for mints, AccessControl (multi-admin)
 
-### Deployed Contracts (Mainnet)
+Both contracts use OpenZeppelin AccessControl. The deployer gets `DEFAULT_ADMIN_ROLE` (can manage admins) and `ADMIN_ROLE` (can call admin functions). Additional admins can be added via `grantRole(ADMIN_ROLE, address)`.
+
+### Deployed Contracts
+
+**Mainnet & Testnet** (same addresses via deterministic deployment)
 | Contract | Address | Abscan |
 |----------|---------|--------|
-| PresentationNFT | `0xEB72BAF34dfF2E3f92601D1da9AA5C611e56cE75` | [View](https://abscan.org/address/0xEB72BAF34dfF2E3f92601D1da9AA5C611e56cE75) |
-| PresentationPaymaster | `0x8b4606476FdE49fe76249fE86dad6e94F1F99725` | [View](https://abscan.org/address/0x8b4606476FdE49fe76249fE86dad6e94F1F99725) |
+| PresentationNFT | `0x78Adb12c6b37AD7305204E342bD22cEFBEAdC39a` | [Mainnet](https://abscan.org/address/0x78Adb12c6b37AD7305204E342bD22cEFBEAdC39a) / [Testnet](https://sepolia.abscan.org/address/0x78Adb12c6b37AD7305204E342bD22cEFBEAdC39a) |
+| PresentationPaymaster | `0x9F3752E89803d8cf79ab07CbE0668E5FbA2cFCbB` | [Mainnet](https://abscan.org/address/0x9F3752E89803d8cf79ab07CbE0668E5FbA2cFCbB) / [Testnet](https://sepolia.abscan.org/address/0x9F3752E89803d8cf79ab07CbE0668E5FbA2cFCbB) |
 
-Owner: `0x81956B7FB8858d9081aE5E85FA50E7032487eeCA`
+Default Admin: `0x81956B7FB8858d9081aE5E85FA50E7032487eeCA`
 
 ### Environment Variables
 ```

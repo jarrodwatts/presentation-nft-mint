@@ -68,10 +68,18 @@ export default function AdminPage() {
     setIsDragging(false);
   };
 
-  const { data: contractOwner, isLoading: isLoadingOwner } = useReadContract({
+  const { data: adminRole } = useReadContract({
     address: PRESENTATION_NFT_ADDRESS,
     abi: PRESENTATION_NFT_ABI,
-    functionName: "owner",
+    functionName: "ADMIN_ROLE",
+  });
+
+  const { data: hasAdminRole, isLoading: isLoadingRole } = useReadContract({
+    address: PRESENTATION_NFT_ADDRESS,
+    abi: PRESENTATION_NFT_ABI,
+    functionName: "hasRole",
+    args: adminRole && address ? [adminRole, address] : undefined,
+    query: { enabled: !!adminRole && !!address },
   });
 
   const { data: presentationCount } = useReadContract({
@@ -80,8 +88,7 @@ export default function AdminPage() {
     functionName: "presentationCount",
   });
 
-  const isOwner = address && contractOwner && 
-    address.toLowerCase() === (contractOwner as string).toLowerCase();
+  const isAdmin = !!hasAdminRole;
 
   const { writeContract, isPending, data: txHash, reset } = useWriteContract();
 
@@ -158,7 +165,7 @@ export default function AdminPage() {
     );
   }
 
-  if (isLoadingOwner) {
+  if (isLoadingRole) {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 font-body">
         <div className="flex flex-col items-center gap-6">
@@ -171,7 +178,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!isOwner) {
+  if (!isAdmin) {
     return (
       <main className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 font-body selection:bg-primary selection:text-black">
         <div className="w-full max-w-md border border-red-500/20 bg-red-500/5 p-12 flex flex-col items-center gap-8">
@@ -182,7 +189,7 @@ export default function AdminPage() {
             <div className="text-center space-y-2">
               <h1 className="font-display font-bold text-3xl tracking-tighter uppercase text-red-500">Access Denied</h1>
               <p className="text-muted-foreground text-sm font-mono uppercase tracking-widest">
-                Owner Only
+                Admin Only
               </p>
             </div>
           </div>

@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Test, console} from "forge-std/Test.sol";
 import {PresentationNFT} from "../src/PresentationNFT.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract PresentationNFTTest is Test {
     PresentationNFT public nft;
@@ -20,7 +21,8 @@ contract PresentationNFTTest is Test {
     }
 
     function test_InitialState() public view {
-        assertEq(nft.owner(), owner);
+        assertTrue(nft.hasRole(nft.ADMIN_ROLE(), owner));
+        assertTrue(nft.hasRole(nft.DEFAULT_ADMIN_ROLE(), owner));
         assertEq(nft.presentationCount(), 0);
     }
 
@@ -46,7 +48,7 @@ contract PresentationNFTTest is Test {
         assertTrue(pres.isActive);
     }
 
-    function test_CreatePresentation_OnlyOwner() public {
+    function test_CreatePresentation_OnlyAdmin() public {
         vm.prank(alice);
         vm.expectRevert();
         nft.createPresentation(
@@ -193,7 +195,7 @@ contract PresentationNFTTest is Test {
         assertTrue(pres.isActive);
     }
 
-    function test_SetMintingActive_OnlyOwner() public {
+    function test_SetMintingActive_OnlyAdmin() public {
         _createActivePresentation();
 
         vm.prank(alice);
@@ -325,6 +327,8 @@ contract PresentationNFTTest is Test {
     function testFuzz_Mint_DifferentUsers(address user) public {
         vm.assume(user != address(0));
         vm.assume(user != owner);
+        vm.assume(uint160(user) > 0xFFFF);
+        vm.assume(user.code.length == 0);
         
         _createActivePresentation();
         
@@ -381,21 +385,36 @@ contract PresentationNFTTest is Test {
 
     function test_CanMint_AllConditions() public {
         _createActivePresentation();
-        
+
         assertTrue(nft.canMint(0, alice));
-        
+
         vm.prank(owner);
         nft.setMintingActive(0, false);
         assertFalse(nft.canMint(0, alice));
-        
+
         vm.prank(owner);
         nft.setMintingActive(0, true);
         assertTrue(nft.canMint(0, alice));
-        
+
         vm.prank(alice);
         nft.mint(0);
         assertFalse(nft.canMint(0, alice));
         assertTrue(nft.canMint(0, bob));
+    }
+
+    // ============ AccessControl Tests ============
+
+    function test_HasAdminRole() public view {
+        assertTrue(nft.hasRole(nft.ADMIN_ROLE(), owner));
+    }
+
+    function test_HasDefaultAdminRole() public view {
+        assertTrue(nft.hasRole(nft.DEFAULT_ADMIN_ROLE(), owner));
+    }
+
+    function test_NonAdminDoesNotHaveRole() public view {
+        assertFalse(nft.hasRole(nft.ADMIN_ROLE(), alice));
+        assertFalse(nft.hasRole(nft.DEFAULT_ADMIN_ROLE(), alice));
     }
 
 }

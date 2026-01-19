@@ -2,9 +2,13 @@
 pragma solidity ^0.8.24;
 
 import {IPaymaster, Transaction, ExecutionResult} from "./interfaces/IPaymaster.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract PresentationPaymaster is IPaymaster, Ownable {
+contract PresentationPaymaster is IPaymaster, AccessControl {
+
+    // ============ Roles ============
+
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // ============ Constants ============
     
@@ -50,13 +54,15 @@ contract PresentationPaymaster is IPaymaster, Ownable {
     // ============ Constructor ============
     
     constructor(
-        address _owner,
+        address _admin,
         address _nftContract
-    ) Ownable(_owner) {
+    ) {
         nftContract = _nftContract;
         isActive = true;
-        maxGasPrice = 1 gwei; // Default max gas price
-        withdrawers[_owner] = true;
+        maxGasPrice = 1 gwei;
+        withdrawers[_admin] = true;
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(ADMIN_ROLE, _admin);
     }
 
     // ============ IPaymaster Implementation ============
@@ -131,7 +137,7 @@ contract PresentationPaymaster is IPaymaster, Ownable {
      * @notice Update the NFT contract address
      * @param _nftContract New NFT contract address
      */
-    function setNFTContract(address _nftContract) external onlyOwner {
+    function setNFTContract(address _nftContract) external onlyRole(ADMIN_ROLE) {
         address old = nftContract;
         nftContract = _nftContract;
         emit NFTContractUpdated(old, _nftContract);
@@ -141,7 +147,7 @@ contract PresentationPaymaster is IPaymaster, Ownable {
      * @notice Toggle the paymaster on/off
      * @param _isActive Whether paymaster should be active
      */
-    function setActive(bool _isActive) external onlyOwner {
+    function setActive(bool _isActive) external onlyRole(ADMIN_ROLE) {
         isActive = _isActive;
         emit PaymasterToggled(_isActive);
     }
@@ -150,7 +156,7 @@ contract PresentationPaymaster is IPaymaster, Ownable {
      * @notice Set maximum gas price to sponsor
      * @param _maxGasPrice Max gas price in wei
      */
-    function setMaxGasPrice(uint256 _maxGasPrice) external onlyOwner {
+    function setMaxGasPrice(uint256 _maxGasPrice) external onlyRole(ADMIN_ROLE) {
         maxGasPrice = _maxGasPrice;
         emit MaxGasPriceUpdated(_maxGasPrice);
     }
@@ -160,7 +166,7 @@ contract PresentationPaymaster is IPaymaster, Ownable {
      * @param withdrawer Address to update
      * @param canWithdraw Whether they can withdraw
      */
-    function setWithdrawer(address withdrawer, bool canWithdraw) external onlyOwner {
+    function setWithdrawer(address withdrawer, bool canWithdraw) external onlyRole(ADMIN_ROLE) {
         withdrawers[withdrawer] = canWithdraw;
         emit WithdrawerUpdated(withdrawer, canWithdraw);
     }

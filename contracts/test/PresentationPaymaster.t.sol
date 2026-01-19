@@ -5,6 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 import {PresentationPaymaster} from "../src/PresentationPaymaster.sol";
 import {PresentationNFT} from "../src/PresentationNFT.sol";
 import {Transaction, ExecutionResult} from "../src/interfaces/IPaymaster.sol";
+import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract PresentationPaymasterTest is Test {
     PresentationPaymaster public paymaster;
@@ -34,7 +35,8 @@ contract PresentationPaymasterTest is Test {
     }
 
     function test_InitialState() public view {
-        assertEq(paymaster.owner(), owner);
+        assertTrue(paymaster.hasRole(paymaster.ADMIN_ROLE(), owner));
+        assertTrue(paymaster.hasRole(paymaster.DEFAULT_ADMIN_ROLE(), owner));
         assertEq(paymaster.nftContract(), address(nft));
         assertTrue(paymaster.isActive());
         assertEq(paymaster.maxGasPrice(), 1 gwei);
@@ -50,7 +52,7 @@ contract PresentationPaymasterTest is Test {
         assertEq(paymaster.nftContract(), newNft);
     }
 
-    function test_SetNFTContract_OnlyOwner() public {
+    function test_SetNFTContract_OnlyAdmin() public {
         vm.prank(alice);
         vm.expectRevert();
         paymaster.setNFTContract(makeAddr("newNft"));
@@ -66,7 +68,7 @@ contract PresentationPaymasterTest is Test {
         assertTrue(paymaster.isActive());
     }
 
-    function test_SetActive_OnlyOwner() public {
+    function test_SetActive_OnlyAdmin() public {
         vm.prank(alice);
         vm.expectRevert();
         paymaster.setActive(false);
@@ -79,7 +81,7 @@ contract PresentationPaymasterTest is Test {
         assertEq(paymaster.maxGasPrice(), 5 gwei);
     }
 
-    function test_SetMaxGasPrice_OnlyOwner() public {
+    function test_SetMaxGasPrice_OnlyAdmin() public {
         vm.prank(alice);
         vm.expectRevert();
         paymaster.setMaxGasPrice(5 gwei);
@@ -99,7 +101,7 @@ contract PresentationPaymasterTest is Test {
         assertFalse(paymaster.withdrawers(alice));
     }
 
-    function test_SetWithdrawer_OnlyOwner() public {
+    function test_SetWithdrawer_OnlyAdmin() public {
         vm.prank(alice);
         vm.expectRevert();
         paymaster.setWithdrawer(alice, true);

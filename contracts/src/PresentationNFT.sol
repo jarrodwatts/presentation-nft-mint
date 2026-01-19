@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
@@ -14,8 +14,12 @@ import "@openzeppelin/contracts/utils/Strings.sol";
  *      - One mint per wallet per presentation
  *      - Admin controls for toggling mints
  */
-contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
+contract PresentationNFT is ERC1155, ERC1155Supply, AccessControl {
     using Strings for uint256;
+
+    // ============ Roles ============
+
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     // ============ Structs ============
     
@@ -71,9 +75,11 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
     
     constructor(
         string memory _baseUri,
-        address _owner
-    ) ERC1155(_baseUri) Ownable(_owner) {
+        address _admin
+    ) ERC1155(_baseUri) {
         baseTokenUri = _baseUri;
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        _grantRole(ADMIN_ROLE, _admin);
     }
 
     // ============ Minting ============
@@ -124,7 +130,7 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
         uint256 startTime,
         uint256 endTime,
         uint256 maxSupply
-    ) external onlyOwner returns (uint256 tokenId) {
+    ) external onlyRole(ADMIN_ROLE) returns (uint256 tokenId) {
         if (startTime >= endTime) revert InvalidTimeWindow();
         
         tokenId = presentationCount++;
@@ -147,7 +153,7 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
      * @param tokenId The presentation ID
      * @param isActive Whether minting should be active
      */
-    function setMintingActive(uint256 tokenId, bool isActive) external onlyOwner {
+    function setMintingActive(uint256 tokenId, bool isActive) external onlyRole(ADMIN_ROLE) {
         if (bytes(presentations[tokenId].name).length == 0) {
             revert InvalidPresentation();
         }
@@ -165,15 +171,15 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
         uint256 tokenId,
         uint256 startTime,
         uint256 endTime
-    ) external onlyOwner {
+    ) external onlyRole(ADMIN_ROLE) {
         if (bytes(presentations[tokenId].name).length == 0) {
             revert InvalidPresentation();
         }
         if (startTime >= endTime) revert InvalidTimeWindow();
-        
+
         presentations[tokenId].startTime = startTime;
         presentations[tokenId].endTime = endTime;
-        
+
         emit PresentationUpdated(tokenId);
     }
 
@@ -181,7 +187,7 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
      * @notice Update base URI for metadata
      * @param newUri New base URI
      */
-    function setBaseUri(string calldata newUri) external onlyOwner {
+    function setBaseUri(string calldata newUri) external onlyRole(ADMIN_ROLE) {
         baseTokenUri = newUri;
         emit BaseURIUpdated(newUri);
     }
@@ -263,7 +269,7 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
     }
 
     // ============ Internal ============
-    
+
     function _update(
         address from,
         address to,
@@ -271,6 +277,15 @@ contract PresentationNFT is ERC1155, ERC1155Supply, Ownable {
         uint256[] memory values
     ) internal override(ERC1155, ERC1155Supply) {
         super._update(from, to, ids, values);
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC1155, AccessControl)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 
     /// @dev Simple base64 encoding for on-chain metadata

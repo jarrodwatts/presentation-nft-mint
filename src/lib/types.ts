@@ -49,7 +49,7 @@ export const ERROR_PATTERNS: [RegExp, string][] = [
   [/minting not started|MintingNotStarted/i, "Minting hasn't started yet"],
   [/max supply|MaxSupplyReached/i, "Sold out!"],
   [/invalid presentation|InvalidPresentation/i, "This presentation doesn't exist"],
-  [/ownable|not the owner|OwnableUnauthorizedAccount/i, "Only the contract owner can do this"],
+  [/ownable|not the owner|OwnableUnauthorizedAccount|AccessControlUnauthorizedAccount/i, "Only admins can do this"],
   [/network|chain/i, "Please switch to the correct network"],
   [/timeout|timed out/i, "Request timed out. Please try again"],
   [/reverted|revert/i, "Transaction failed"],
